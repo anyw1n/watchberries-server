@@ -11,6 +11,9 @@ class WatchberriesApplication {
 
     @GetMapping("/")
     fun index() = "Watchberries server is alive!"
+    
+    @GetMapping("/api/")
+    fun api() = "Watchberries API"
 }
 
 fun main(args: Array<String>) {
