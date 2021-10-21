@@ -2,10 +2,17 @@ package alexeyzhizhensky.watchberries
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RestController
 
+@RestController
 @SpringBootApplication
-class WatchberriesApplication
+class WatchberriesApplication {
+
+    @GetMapping("/")
+    fun index() = "Watchberries server is alive!"
+}
 
 fun main(args: Array<String>) {
-	runApplication<WatchberriesApplication>(*args)
+    runApplication<WatchberriesApplication>(*args)
 }
