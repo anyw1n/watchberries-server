@@ -15,17 +15,24 @@ repositories {
     mavenCentral()
 }
 
+val exposedVersion: String by project
+val springBootVersion: String by project
+
 dependencies {
+    implementation("org.jsoup:jsoup:1.14.3")
+
+    implementation("org.postgresql:postgresql:42.3.0")
+    implementation("com.zaxxer:HikariCP:5.0.0")
+    implementation("org.flywaydb:flyway-core:8.0.2")
+    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.0")
 
-    val springBootVersion = "2.5.5"
-
     implementation("org.springframework.boot:spring-boot-starter-web:$springBootVersion")
-//    implementation("org.springframework.boot:spring-boot-starter-jdbc:$springBootVersion")
-
 }
 
 tasks.withType<KotlinCompile> {
