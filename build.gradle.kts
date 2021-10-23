@@ -26,7 +26,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web:$springBootVersion")
 //    implementation("org.springframework.boot:spring-boot-starter-jdbc:$springBootVersion")
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test:$springBootVersion")
 }
 
 tasks.withType<KotlinCompile> {
@@ -34,8 +33,4 @@ tasks.withType<KotlinCompile> {
         freeCompilerArgs = listOf("-Xjsr305=strict")
         jvmTarget = "11"
     }
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
 }
