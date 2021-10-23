@@ -35,6 +35,20 @@ object WatchberriesDatabase {
         flyway.migrate()
 
         Database.connect(dataSource)
+
+        arrayListOf(
+            24718720,
+            24797691,
+            12530538,
+            8389067,
+            26819460,
+            5091950,
+            16738270,
+            25535704,
+            17514615,
+            6690908,
+            25656533
+        ).forEach(this::addProductIfNeeded)
     }
 
     fun updatePriceForProduct(sku: Int) {
