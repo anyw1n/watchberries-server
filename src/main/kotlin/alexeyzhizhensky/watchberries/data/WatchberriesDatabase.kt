@@ -4,12 +4,10 @@ import alexeyzhizhensky.watchberries.data.tables.Prices
 import alexeyzhizhensky.watchberries.data.tables.Products
 import alexeyzhizhensky.watchberries.data.tables.Skus
 import alexeyzhizhensky.watchberries.data.tables.Users
+import com.google.gson.Gson
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jsoup.Jsoup
 import org.slf4j.LoggerFactory
@@ -18,6 +16,8 @@ import java.time.LocalDateTime
 import java.util.*
 
 object WatchberriesDatabase {
+
+    private val gson = Gson()
 
     private val log = LoggerFactory.getLogger(WatchberriesDatabase::class.java)
 
@@ -35,20 +35,6 @@ object WatchberriesDatabase {
         flyway.migrate()
 
         Database.connect(dataSource)
-
-        arrayListOf(
-            24718720,
-            24797691,
-            12530538,
-            8389067,
-            26819460,
-            5091950,
-            16738270,
-            25535704,
-            17514615,
-            6690908,
-            25656533
-        ).forEach(this::addProductIfNeeded)
     }
 
     fun updatePriceForProduct(sku: Int) {
@@ -137,6 +123,28 @@ object WatchberriesDatabase {
         log.error("Error parsing WB! SKU: $sku. Error: ${it.localizedMessage}")
 
         null
+    }
+
+    fun getAllProducts(): String {
+        val products = mutableListOf<Product>()
+
+        transaction {
+            Products.selectAll().forEach { resultRow ->
+                val sku = resultRow[Products.sku]
+                val prices = Prices.select { Prices.sku eq sku }.associate { it[Prices.timestamp] to it[Prices.price] }
+
+                val product = Product(
+                    sku = sku,
+                    brand = resultRow[Products.brand],
+                    title = resultRow[Products.title],
+                    prices = prices
+                )
+
+                products.add(product)
+            }
+        }
+
+        return gson.toJson(products)
     }
 
     private const val DATABASE_URL_KEY = "DATABASE_URL"

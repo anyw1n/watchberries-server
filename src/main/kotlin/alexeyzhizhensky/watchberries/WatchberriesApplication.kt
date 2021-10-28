@@ -19,6 +19,9 @@ class WatchberriesApplication {
     @GetMapping("/api/")
     fun api() = "Watchberries API"
 
+    @GetMapping("/api/products")
+    fun apiProducts() = WatchberriesDatabase.getAllProducts()
+
     @PostConstruct
     fun init() {
         WatchberriesDatabase.connect()
