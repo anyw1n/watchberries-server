@@ -16,7 +16,7 @@ class ScheduledTasks {
 
     private val log = LoggerFactory.getLogger(ScheduledTasks::class.java)
 
-    @Scheduled(fixedRate = UPDATE_INTERVAL)
+    @Scheduled(cron = "0 0 */3 * * *")
     fun updateProductsPrices() {
         log.info("Start prices update...")
 
@@ -32,16 +32,11 @@ class ScheduledTasks {
         log.info("Start deleting old prices...")
 
         val lastPossibleDateTime = LocalDateTime.now().minusMonths(3)
-
+// TODO: 10/28/2021 save last price
         transaction {
             Prices.deleteWhere { Prices.timestamp less lastPossibleDateTime }
         }
 
         log.info("Old prices deleted.")
-    }
-
-    private companion object {
-
-        private const val UPDATE_INTERVAL = 3 * 60 * 60 * 1000L
     }
 }

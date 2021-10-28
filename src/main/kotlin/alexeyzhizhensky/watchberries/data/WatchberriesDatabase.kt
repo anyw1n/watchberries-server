@@ -25,8 +25,8 @@ object WatchberriesDatabase {
         val dbUri = URI(System.getenv(DATABASE_URL_KEY))
 
         val dataSource = HikariDataSource().apply {
-            jdbcUrl = URL_START + dbUri.host + dbUri.path
-            driverClassName = DRIVER
+            jdbcUrl = JDBC_URL_START + dbUri.host + dbUri.path
+            driverClassName = DRIVER_CLASS_NAME
             username = dbUri.userInfo.split(":")[0]
             password = dbUri.userInfo.split(":")[1]
         }
@@ -52,8 +52,6 @@ object WatchberriesDatabase {
     }
 
     fun updatePriceForProduct(sku: Int) {
-        log.info("Update price of product $sku...")
-
         val currentPrice = parseWbPage(sku)?.price ?: return
 
         val lastPrice = transaction {
@@ -61,7 +59,6 @@ object WatchberriesDatabase {
         }
 
         if (currentPrice == lastPrice) {
-            log.info("No need to update.")
             return
         }
 
@@ -73,7 +70,7 @@ object WatchberriesDatabase {
             }
         }
 
-        log.info("Price updated.")
+        log.info("SKU: $sku - Price updated.")
     }
 
     fun addUser(newUserId: UUID) = transaction {
@@ -128,9 +125,9 @@ object WatchberriesDatabase {
     private fun parseWbPage(sku: Int) = runCatching {
         val doc = Jsoup.connect("https://by.wildberries.ru/catalog/$sku/detail.aspx?targetUrl=WP").get()
 
-        val brand = doc.select("span[data-link=text{:productCard^brandName}]").firstOrNull()?.text()
+        val brand = doc.select("span[data-link=text{:product^brandName}]").firstOrNull()?.text()
             ?: throw Exception("Brand not found.")
-        val title = doc.select("span[data-link=text{:productCard^goodsName}]").firstOrNull()?.text()
+        val title = doc.select("span[data-link=text{:product^goodsName}]").firstOrNull()?.text()
             ?: throw Exception("Title not found.")
         val priceText = doc.select("span.price-block__final-price").firstOrNull()?.text() ?: "0"
         val price = """\D+""".toRegex().replace(priceText, "").toIntOrNull() ?: 0
@@ -143,6 +140,6 @@ object WatchberriesDatabase {
     }
 
     private const val DATABASE_URL_KEY = "DATABASE_URL"
-    private const val URL_START = "jdbc:postgresql://"
-    private const val DRIVER = "org.postgresql.Driver"
+    private const val JDBC_URL_START = "jdbc:postgresql://"
+    private const val DRIVER_CLASS_NAME = "org.postgresql.Driver"
 }
