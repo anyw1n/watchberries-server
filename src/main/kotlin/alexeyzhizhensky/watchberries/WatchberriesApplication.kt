@@ -25,7 +25,11 @@ class WatchberriesApplication {
 
     @GetMapping("/api/products")
     fun apiProducts(@RequestParam(required = false) sku: List<Int>?): String {
-        val products = if (sku != null) WatchberriesDatabase.getProducts(sku) else WatchberriesDatabase.getAllProducts()
+        val products = if (sku != null) {
+            WatchberriesDatabase.getProducts(sku)
+        } else {
+            WatchberriesDatabase.getAllProducts()
+        }
 
         return gson.toJson(products)
     }

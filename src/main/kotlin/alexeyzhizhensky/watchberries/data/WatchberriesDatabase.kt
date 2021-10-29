@@ -4,10 +4,9 @@ import alexeyzhizhensky.watchberries.data.tables.Prices
 import alexeyzhizhensky.watchberries.data.tables.Products
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jsoup.Jsoup
 import org.slf4j.LoggerFactory
@@ -19,17 +18,19 @@ object WatchberriesDatabase {
     private val log = LoggerFactory.getLogger(WatchberriesDatabase::class.java)
 
     fun connect() {
-        val dbUri = URI(System.getenv(DATABASE_URL_KEY))
-
         val dataSource = HikariDataSource().apply {
+            val dbUri = URI(System.getenv(DATABASE_URL_KEY))
+            val userInfo = dbUri.userInfo.split(":")
+
             jdbcUrl = JDBC_URL_START + dbUri.host + dbUri.path
             driverClassName = DRIVER_CLASS_NAME
-            username = dbUri.userInfo.split(":")[0]
-            password = dbUri.userInfo.split(":")[1]
+            username = userInfo[0]
+            password = userInfo[1]
         }
 
-        val flyway = Flyway.configure().dataSource(dataSource).load()
-        flyway.migrate()
+        Flyway.configure().dataSource(dataSource).load().apply {
+            migrate()
+        }
 
         Database.connect(dataSource)
     }
@@ -41,8 +42,8 @@ object WatchberriesDatabase {
             ?: throw Exception("Brand not found.")
         val title = doc.select("span[data-link=text{:product^goodsName}]").firstOrNull()?.text()
             ?: throw Exception("Title not found.")
-        val priceText = doc.select("span.price-block__final-price").firstOrNull()?.text() ?: "0"
-        val price = """\D+""".toRegex().replace(priceText, "").toIntOrNull() ?: 0
+        val priceText = doc.select("span.price-block__final-price").firstOrNull()?.text()
+        val price = priceText?.let { """\D+""".toRegex().replace(it, "").toIntOrNull() } ?: 0
 
         WbPage(brand, title, price)
     }.getOrElse {
@@ -51,7 +52,61 @@ object WatchberriesDatabase {
         null
     }
 
-    fun updatePriceForProduct(sku: Int) {
+    private fun addProduct(sku: Int) {
+        val wbPage = parseWbPage(sku)
+
+        if (wbPage == null) {
+            log.error("Product $sku not added.")
+            return
+        }
+
+        val dateTime = LocalDateTime.now()
+
+        transaction {
+            Products.insert {
+                it[this.sku] = sku
+                it[brand] = wbPage.brand
+                it[title] = wbPage.title
+            }
+
+            Prices.insert {
+                it[this.sku] = sku
+                it[timestamp] = dateTime
+                it[price] = wbPage.price
+            }
+        }
+
+        addPricePoint(sku, dateTime.minusMonths(3))
+
+        log.info("Product $sku added.")
+    }
+
+    private fun getAllSkus() = transaction { Products.selectAll().map { it[Products.sku] } }
+
+    fun getAllProducts() = getProducts(getAllSkus())
+
+    fun getProducts(skus: List<Int>) = skus.map { sku ->
+        getProduct(sku) ?: addProduct(sku).run { getProduct(sku) }
+    }
+
+    private fun getProduct(sku: Int) = transaction {
+        Products.select { Products.sku eq sku }.singleOrNull()?.let { resultRow ->
+            val prices = Prices.select { Prices.sku eq sku }
+                .orderBy(Prices.timestamp)
+                .associate { it[Prices.timestamp] to it[Prices.price] }
+
+            Product(
+                sku = sku,
+                brand = resultRow[Products.brand],
+                title = resultRow[Products.title],
+                prices = prices
+            )
+        }
+    }
+
+    fun updatePrices() = getAllSkus().forEach(WatchberriesDatabase::updatePrice)
+
+    private fun updatePrice(sku: Int) {
         val lastPrice = transaction {
             Prices.select { Prices.sku eq sku }.orderBy(Prices.timestamp).last()[Prices.price]
         }
@@ -78,67 +133,20 @@ object WatchberriesDatabase {
         log.info("SKU: $sku - Price updated.")
     }
 
-    private fun addProduct(sku: Int) {
-        log.info("Adding a $sku product...")
+    fun deleteOldPrices(lastDateTime: LocalDateTime) {
+        getAllSkus().forEach { addPricePoint(it, lastDateTime) }
 
-        val wbPage = parseWbPage(sku)
-
-        if (wbPage == null) {
-            log.error("Product $sku not added.")
-            return
-        }
-
-        transaction {
-            Products.insert {
-                it[this.sku] = sku
-                it[brand] = wbPage.brand
-                it[title] = wbPage.title
-            }
-
-            Prices.insert {
-                it[this.sku] = sku
-                it[timestamp] = LocalDateTime.now()
-                it[price] = wbPage.price
-            }
-        }
-
-        log.info("Product $sku added.")
+        transaction { Prices.deleteWhere { Prices.timestamp less lastDateTime } }
     }
 
-    private fun getProduct(sku: Int) = transaction {
-        Products.select { Products.sku eq sku }.firstOrNull()?.let { resultRow ->
-            val prices = Prices
-                .select { Prices.sku eq resultRow[Products.sku] }
-                .orderBy(Prices.timestamp)
-                .associate { it[Prices.timestamp] to it[Prices.price] }
+    private fun addPricePoint(sku: Int, dateTime: LocalDateTime) = transaction {
+        val whereCondition = (Prices.sku eq sku) and (Prices.timestamp less dateTime)
+        val price = Prices.select(whereCondition).orderBy(Prices.timestamp).lastOrNull()?.get(Prices.price) ?: 0
 
-            Product(
-                sku = sku,
-                brand = resultRow[Products.brand],
-                title = resultRow[Products.title],
-                prices = prices
-            )
-        }
-    }
-
-    fun getProducts(skus: List<Int>) = skus.map { sku ->
-        getProduct(sku) ?: addProduct(sku).run { getProduct(sku) }
-    }
-
-    fun getAllProducts() = transaction {
-        Products.selectAll().map { resultRow ->
-            val sku = resultRow[Products.sku]
-            val prices = Prices
-                .select { Prices.sku eq sku }
-                .orderBy(Prices.timestamp)
-                .associate { it[Prices.timestamp] to it[Prices.price] }
-
-            Product(
-                sku = sku,
-                brand = resultRow[Products.brand],
-                title = resultRow[Products.title],
-                prices = prices
-            )
+        Prices.insert {
+            it[this.sku] = sku
+            it[timestamp] = dateTime
+            it[Prices.price] = price
         }
     }
 

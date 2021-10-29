@@ -4,7 +4,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.javatime.datetime
 
-object Prices : IntIdTable("db.prices", "id") {
+object Prices : IntIdTable("db.prices") {
 
     val sku = integer("sku").references(Products.sku, ReferenceOption.CASCADE)
 
