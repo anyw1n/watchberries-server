@@ -11,7 +11,7 @@ class ScheduledTasks {
 
     private val log = LoggerFactory.getLogger(ScheduledTasks::class.java)
 
-    @Scheduled(cron = "0 0 */3 * * *")
+    @Scheduled(cron = "0 0 * * * *")
     fun updateProductsPrices() {
         log.info("Start prices update...")
 
