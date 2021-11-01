@@ -19,7 +19,7 @@ val exposedVersion: String by project
 val springBootVersion: String by project
 
 dependencies {
-    implementation("com.google.code.gson:gson:2.8.8")
+    implementation("com.google.firebase:firebase-admin:8.1.0")
 
     implementation("org.jsoup:jsoup:1.14.3")
 

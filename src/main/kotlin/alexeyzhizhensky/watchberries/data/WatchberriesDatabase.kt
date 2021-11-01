@@ -1,21 +1,19 @@
 package alexeyzhizhensky.watchberries.data
 
+import alexeyzhizhensky.watchberries.data.requests.TokenRequest
+import alexeyzhizhensky.watchberries.data.requests.UserRequest
 import alexeyzhizhensky.watchberries.data.tables.Prices
 import alexeyzhizhensky.watchberries.data.tables.Products
+import alexeyzhizhensky.watchberries.data.tables.Skus
+import alexeyzhizhensky.watchberries.data.tables.Users
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jsoup.Jsoup
-import org.slf4j.LoggerFactory
 import java.net.URI
 import java.time.LocalDateTime
 
 object WatchberriesDatabase {
-
-    private val log = LoggerFactory.getLogger(WatchberriesDatabase::class.java)
 
     fun connect() {
         val dataSource = HikariDataSource().apply {
@@ -35,65 +33,32 @@ object WatchberriesDatabase {
         Database.connect(dataSource)
     }
 
-    private fun parseWbPage(sku: Int) = runCatching {
-        val doc = Jsoup.connect("https://by.wildberries.ru/catalog/$sku/detail.aspx?targetUrl=WP").get()
+    fun getAllSkus() = transaction { Products.selectAll().map { it[Products.sku] } }
 
-        val brand = doc.select("span[data-link=text{:product^brandName}]").firstOrNull()?.text()
-            ?: throw Exception("Brand not found.")
-        val title = doc.select("span[data-link=text{:product^goodsName}]").firstOrNull()?.text()
-            ?: throw Exception("Title not found.")
-        val priceText = doc.select("span.price-block__final-price").firstOrNull()?.text()
-        val price = priceText?.let { """\D+""".toRegex().replace(it, "").toIntOrNull() } ?: 0
-
-        WbPage(brand, title, price)
-    }.getOrElse {
-        log.error("Error parsing WB! SKU: $sku. Error: ${it.localizedMessage}")
-
-        null
-    }
-
-    private fun addProduct(sku: Int) {
-        val wbPage = parseWbPage(sku)
-
-        if (wbPage == null) {
-            log.error("Product $sku not added.")
-            return
+    fun insertProduct(product: Product) = transaction {
+        Products.insert {
+            it[this.sku] = product.sku
+            it[brand] = product.brand
+            it[title] = product.title
         }
 
-        val dateTime = LocalDateTime.now()
-
-        transaction {
-            Products.insert {
-                it[this.sku] = sku
-                it[brand] = wbPage.brand
-                it[title] = wbPage.title
-            }
-
-            Prices.insert {
-                it[this.sku] = sku
-                it[timestamp] = dateTime
-                it[price] = wbPage.price
-            }
+        Prices.batchInsert(
+            data = product.prices.asIterable(),
+            shouldReturnGeneratedValues = false
+        ) {
+            this[Prices.sku] = product.sku
+            this[Prices.timestamp] = it.dateTime
+            this[Prices.price] = it.price
         }
 
-        addPricePoint(sku, dateTime.minusMonths(3))
-
-        log.info("Product $sku added.")
+        product
     }
 
-    private fun getAllSkus() = transaction { Products.selectAll().map { it[Products.sku] } }
-
-    fun getAllProducts() = getProducts(getAllSkus())
-
-    fun getProducts(skus: List<Int>) = skus.map { sku ->
-        getProduct(sku) ?: addProduct(sku).run { getProduct(sku) }
-    }
-
-    private fun getProduct(sku: Int) = transaction {
+    fun getProduct(sku: Int) = transaction {
         Products.select { Products.sku eq sku }.singleOrNull()?.let { resultRow ->
             val prices = Prices.select { Prices.sku eq sku }
                 .orderBy(Prices.timestamp)
-                .associate { it[Prices.timestamp] to it[Prices.price] }
+                .map { Price(it[Prices.timestamp], it[Prices.price]) }
 
             Product(
                 sku = sku,
@@ -104,50 +69,85 @@ object WatchberriesDatabase {
         }
     }
 
-    fun updatePrices() = getAllSkus().forEach(WatchberriesDatabase::updatePrice)
+    fun insertUser(userRequest: UserRequest) = transaction {
+        val user = User(userRequest.id, userRequest.token)
 
-    private fun updatePrice(sku: Int) {
-        val lastPrice = transaction {
-            Prices.select { Prices.sku eq sku }.orderBy(Prices.timestamp).last()[Prices.price]
+        Users.insert {
+            it[id] = user.id
+            it[this.key] = user.key
+            it[token] = user.token
+            it[lastSync] = user.lastSync
         }
 
-        val currentPrice = parseWbPage(sku)?.price
+        user
+    }
 
-        if (currentPrice == null) {
-            log.error("SKU: $sku - Error price updating.")
-            return
+    fun deleteOldUsers(lastDateTime: LocalDateTime) = transaction {
+        Users.deleteWhere { Users.lastSync eq lastDateTime }
+    }
+
+    fun updateUser(id: String, tokenRequest: TokenRequest) = transaction {
+        Users.update({ Users.id eq id }) {
+            it[token] = tokenRequest.token
+            it[lastSync] = LocalDateTime.now()
         }
 
-        if (lastPrice == currentPrice) {
-            return
-        }
+        getUser(id)
+    }
 
+    fun getUser(id: String): User? {
+        val skus = getSkusForUser(id)
+
+        return transaction {
+            Users.select { Users.id eq id }.singleOrNull()?.let {
+                User(
+                    id = it[Users.id],
+                    token = it[Users.token],
+                    key = it[Users.key],
+                    lastSync = it[Users.lastSync],
+                    skus = skus
+                )
+            }
+        }
+    }
+
+    fun getOldUserIds(lastDateTime: LocalDateTime) = transaction {
+        Users.select { Users.lastSync less lastDateTime }.map { it[Users.id] }
+    }
+
+    fun addSkuToUser(sku: Int, userId: String): User? {
         transaction {
-            Prices.insert {
+            Skus.insert {
+                it[user] = userId
                 it[this.sku] = sku
-                it[timestamp] = LocalDateTime.now()
-                it[price] = currentPrice
             }
         }
 
-        log.info("SKU: $sku - Price updated.")
+        return getUser(userId)
     }
 
-    fun deleteOldPrices(lastDateTime: LocalDateTime) {
-        getAllSkus().forEach { addPricePoint(it, lastDateTime) }
+    fun deleteSkuFromUser(sku: Int, userId: String): User? {
+        transaction {
+            Skus.deleteWhere { (Skus.user eq userId) and (Skus.sku eq sku) }
+        }
 
-        transaction { Prices.deleteWhere { Prices.timestamp less lastDateTime } }
+        return getUser(userId)
     }
 
-    private fun addPricePoint(sku: Int, dateTime: LocalDateTime) = transaction {
-        val whereCondition = (Prices.sku eq sku) and (Prices.timestamp less dateTime)
-        val price = Prices.select(whereCondition).orderBy(Prices.timestamp).lastOrNull()?.get(Prices.price) ?: 0
+    fun getSkusForUser(id: String) = transaction {
+        Skus.select { Skus.user eq id }.map { it[Skus.sku] }
+    }
 
+    fun addPriceToProduct(sku: Int, price: Price) = transaction {
         Prices.insert {
             it[this.sku] = sku
-            it[timestamp] = dateTime
-            it[Prices.price] = price
+            it[timestamp] = price.dateTime
+            it[this.price] = price.price
         }
+    }
+
+    fun deleteOldPrices(lastDateTime: LocalDateTime) = transaction {
+        Prices.deleteWhere { Prices.timestamp less lastDateTime }
     }
 
     private const val DATABASE_URL_KEY = "DATABASE_URL"
