@@ -6,10 +6,12 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-class DatabaseConfiguration {
+class Configuration {
 
     @Bean
-    fun initDatabase() = CommandLineRunner {
+    fun init() = CommandLineRunner {
         WatchberriesDatabase.connect()
+
+        FirebaseMessaging.init()
     }
 }
