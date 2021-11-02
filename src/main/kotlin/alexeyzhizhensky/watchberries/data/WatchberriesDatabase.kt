@@ -6,11 +6,19 @@ import alexeyzhizhensky.watchberries.data.tables.Skus
 import alexeyzhizhensky.watchberries.data.tables.Users
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import java.net.URI
 import java.time.LocalDateTime
-import java.util.*
+import java.util.UUID
 
 class WatchberriesDatabase private constructor() {
 

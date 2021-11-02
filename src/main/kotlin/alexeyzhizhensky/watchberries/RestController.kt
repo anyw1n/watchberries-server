@@ -3,9 +3,15 @@ package alexeyzhizhensky.watchberries
 import alexeyzhizhensky.watchberries.data.WatchberriesRepository
 import alexeyzhizhensky.watchberries.data.requests.SkuRequest
 import alexeyzhizhensky.watchberries.data.requests.TokenRequest
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.util.*
+import java.util.UUID
 
 @RestController
 class RestController {
@@ -23,7 +29,8 @@ class RestController {
         @RequestParam(required = false) key: UUID?
     ) = when {
         skus != null -> WatchberriesRepository.getProducts(skus)
-        userId != null && key != null && isAuthCorrect(userId, key) -> WatchberriesRepository.getProductsForUser(userId)
+        userId != null && key != null && isAuthCorrect(userId, key) ->
+            WatchberriesRepository.getProductsForUser(userId)
         userId == null && key == null -> WatchberriesRepository.getAllProducts() // TEST ONLY
         else -> emptyList()
     }
@@ -32,14 +39,20 @@ class RestController {
     fun getProduct(@PathVariable sku: Int) = WatchberriesRepository.getProduct(sku)
 
     @PostMapping("/api/users")
-    fun postUser(@RequestBody tokenRequest: TokenRequest) = WatchberriesRepository.createUser(tokenRequest.token)
+    fun postUser(
+        @RequestBody tokenRequest: TokenRequest
+    ) = WatchberriesRepository.createUser(tokenRequest.token)
 
     @PutMapping("/api/users/{id}")
     fun updateUser(
         @PathVariable id: Int,
         @RequestParam key: UUID,
         @RequestBody tokenRequest: TokenRequest
-    ) = if (isAuthCorrect(id, key)) WatchberriesRepository.updateUser(id, tokenRequest.token) else null
+    ) = if (isAuthCorrect(id, key)) {
+        WatchberriesRepository.updateUser(id, tokenRequest.token)
+    } else {
+        null
+    }
 
     @PostMapping("/api/users/{id}/skus")
     fun postSkuToUser(

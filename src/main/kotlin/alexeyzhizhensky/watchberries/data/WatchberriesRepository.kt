@@ -1,6 +1,6 @@
 package alexeyzhizhensky.watchberries.data
 
-import alexeyzhizhensky.watchberries.utils.OLD_PERIOD_MONTHS
+import alexeyzhizhensky.watchberries.utils.Constants.OLD_PERIOD_MONTHS
 import alexeyzhizhensky.watchberries.utils.pricesOf
 import org.jsoup.Jsoup
 import org.slf4j.LoggerFactory
@@ -60,13 +60,21 @@ object WatchberriesRepository {
     fun getUser(id: Int) = db.getUser(id)
 
     fun addSkuToUser(sku: Int, userId: Int) = db.addSkuToUser(sku, userId).also {
-        val message = if (it != null) "Sku $sku added to user ${it.id}." else "Error adding sku $sku to user $userId."
+        val message = if (it != null) {
+            "Sku $sku added to user ${it.id}."
+        } else {
+            "Error adding sku $sku to user $userId."
+        }
+
         log.info(message)
     }
 
     fun removeSkuFromUser(sku: Int, userId: Int) = db.deleteSkuFromUser(sku, userId).also {
-        val message =
-            if (it != null) "Sku $sku removed from user ${it.id}." else "Error removing sku $sku from user $userId."
+        val message = if (it != null) {
+            "Sku $sku removed from user ${it.id}."
+        } else {
+            "Error removing sku $sku from user $userId."
+        }
         log.info(message)
     }
 
@@ -91,7 +99,8 @@ object WatchberriesRepository {
 
     fun deleteOldPrices(lastDateTime: LocalDateTime) {
         db.getAllSkus().forEach { sku ->
-            val lastPrice = getProduct(sku)?.prices?.findLast { it.dateTime < lastDateTime }?.price ?: return@forEach
+            val lastPrice = getProduct(sku)?.prices?.findLast { it.dateTime < lastDateTime }?.price
+                ?: return@forEach
 
             db.addPriceToProduct(sku, Price(lastDateTime, lastPrice))
         }
@@ -108,7 +117,8 @@ object WatchberriesRepository {
     }
 
     private fun parseWbPage(sku: Int) = runCatching {
-        val doc = Jsoup.connect("https://by.wildberries.ru/catalog/$sku/detail.aspx?targetUrl=WP").get()
+        val doc =
+            Jsoup.connect("https://by.wildberries.ru/catalog/$sku/detail.aspx?targetUrl=WP").get()
 
         val brand = doc.select("span[data-link=text{:product^brandName}]").firstOrNull()?.text()
             ?: throw Exception("Brand not found.")

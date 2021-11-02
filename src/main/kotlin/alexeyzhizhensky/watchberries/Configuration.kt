@@ -10,7 +10,7 @@ class Configuration {
 
     @Bean
     fun init() = CommandLineRunner {
-        WatchberriesDatabase.connect()
+        WatchberriesDatabase.getInstance().connect()
 
         FirebaseMessaging.init()
     }

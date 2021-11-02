@@ -1,7 +1,7 @@
 package alexeyzhizhensky.watchberries
 
 import alexeyzhizhensky.watchberries.data.WatchberriesRepository
-import alexeyzhizhensky.watchberries.utils.OLD_PERIOD_MONTHS
+import alexeyzhizhensky.watchberries.utils.Constants.OLD_PERIOD_MONTHS
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component

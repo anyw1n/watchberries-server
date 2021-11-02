@@ -6,7 +6,7 @@ import java.util.UUID
 data class User(
     val id: Int,
     val token: String,
-    val key: UUID = UUID.randomUUID(),
-    val lastSync: LocalDateTime = LocalDateTime.now(),
-    val skus: List<Int> = emptyList()
+    val key: UUID,
+    val lastSync: LocalDateTime,
+    val skus: List<Int>
 )
