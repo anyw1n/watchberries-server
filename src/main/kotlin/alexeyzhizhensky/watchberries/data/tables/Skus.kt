@@ -4,11 +4,11 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 
 object Skus : IntIdTable("db.skus") {
 
-    val user = text("user").references(Users.id)
+    val userId = integer("user_id").references(Users.id)
 
     val sku = integer("sku")
 
     init {
-        uniqueIndex(user, sku)
+        uniqueIndex(userId, sku)
     }
 }

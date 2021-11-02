@@ -1,7 +1,5 @@
 package alexeyzhizhensky.watchberries.data
 
-import alexeyzhizhensky.watchberries.data.requests.TokenRequest
-import alexeyzhizhensky.watchberries.data.requests.UserRequest
 import alexeyzhizhensky.watchberries.utils.OLD_PERIOD_MONTHS
 import alexeyzhizhensky.watchberries.utils.pricesOf
 import org.jsoup.Jsoup
@@ -43,31 +41,30 @@ object WatchberriesRepository {
 
     fun getProducts(skus: List<Int>) = skus.map { getProduct(it) }
 
-    fun getProductsForUser(userId: String) = getProducts(WatchberriesDatabase.getSkusForUser(userId))
+    fun getProductsForUser(userId: Int) = getProducts(WatchberriesDatabase.getSkusForUser(userId))
 
     fun getAllProducts() = getProducts(WatchberriesDatabase.getAllSkus())
 
-    fun createUser(userRequest: UserRequest) = WatchberriesDatabase.insertUser(userRequest).also {
-        log.info("User ${it.id} created.")
+    fun createUser(token: String) = WatchberriesDatabase.insertUser(token).also {
+        val message = if (it != null) "User ${it.id} created." else "Error creating user."
+        log.info(message)
     }
 
-    fun updateUser(id: String, tokenRequest: TokenRequest) = WatchberriesDatabase.updateUser(id, tokenRequest).also {
+    fun updateUser(id: Int, token: String) = WatchberriesDatabase.updateUser(id, token).also {
         val message = if (it != null) "User ${it.id} updated." else "Error updating user $id."
         log.info(message)
     }
 
-    fun getUser(id: String) = WatchberriesDatabase.getUser(id)
+    fun getUser(id: Int) = WatchberriesDatabase.getUser(id)
 
-    fun addSkuToUser(sku: Int, userId: String) = WatchberriesDatabase.addSkuToUser(sku, userId).also {
+    fun addSkuToUser(sku: Int, userId: Int) = WatchberriesDatabase.addSkuToUser(sku, userId).also {
         val message = if (it != null) "Sku $sku added to user ${it.id}." else "Error adding sku $sku to user $userId."
-        // TODO: subscribe to topic
         log.info(message)
     }
 
-    fun removeSkuFromUser(sku: Int, userId: String) = WatchberriesDatabase.deleteSkuFromUser(sku, userId).also {
+    fun removeSkuFromUser(sku: Int, userId: Int) = WatchberriesDatabase.deleteSkuFromUser(sku, userId).also {
         val message =
             if (it != null) "Sku $sku removed from user ${it.id}." else "Error removing sku $sku from user $userId."
-        // TODO: unsubscribe to topic
         log.info(message)
     }
 

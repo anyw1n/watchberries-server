@@ -1,7 +1,5 @@
 package alexeyzhizhensky.watchberries.data
 
-import alexeyzhizhensky.watchberries.data.requests.TokenRequest
-import alexeyzhizhensky.watchberries.data.requests.UserRequest
 import alexeyzhizhensky.watchberries.data.tables.Prices
 import alexeyzhizhensky.watchberries.data.tables.Products
 import alexeyzhizhensky.watchberries.data.tables.Skus
@@ -12,6 +10,7 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.net.URI
 import java.time.LocalDateTime
+import java.util.*
 
 object WatchberriesDatabase {
 
@@ -69,39 +68,40 @@ object WatchberriesDatabase {
         }
     }
 
-    fun insertUser(userRequest: UserRequest) = transaction {
-        val user = User(userRequest.id, userRequest.token)
-
-        Users.insert {
-            it[id] = user.id
-            it[this.key] = user.key
-            it[token] = user.token
-            it[lastSync] = user.lastSync
+    fun insertUser(token: String): User? {
+        val userId = transaction {
+            Users.insertAndGetId {
+                it[key] = UUID.randomUUID()
+                it[this.token] = token
+                it[lastSync] = LocalDateTime.now()
+            }.value
         }
 
-        user
+        return getUser(userId)
     }
 
     fun deleteOldUsers(lastDateTime: LocalDateTime) = transaction {
         Users.deleteWhere { Users.lastSync eq lastDateTime }
     }
 
-    fun updateUser(id: String, tokenRequest: TokenRequest) = transaction {
-        Users.update({ Users.id eq id }) {
-            it[token] = tokenRequest.token
-            it[lastSync] = LocalDateTime.now()
+    fun updateUser(id: Int, token: String): User? {
+        transaction {
+            Users.update({ Users.id eq id }) {
+                it[this.token] = token
+                it[lastSync] = LocalDateTime.now()
+            }
         }
 
-        getUser(id)
+        return getUser(id)
     }
 
-    fun getUser(id: String): User? {
+    fun getUser(id: Int): User? {
         val skus = getSkusForUser(id)
 
         return transaction {
             Users.select { Users.id eq id }.singleOrNull()?.let {
                 User(
-                    id = it[Users.id],
+                    id = it[Users.id].value,
                     token = it[Users.token],
                     key = it[Users.key],
                     lastSync = it[Users.lastSync],
@@ -112,13 +112,13 @@ object WatchberriesDatabase {
     }
 
     fun getOldUserIds(lastDateTime: LocalDateTime) = transaction {
-        Users.select { Users.lastSync less lastDateTime }.map { it[Users.id] }
+        Users.select { Users.lastSync less lastDateTime }.map { it[Users.id].value }
     }
 
-    fun addSkuToUser(sku: Int, userId: String): User? {
+    fun addSkuToUser(sku: Int, userId: Int): User? {
         transaction {
             Skus.insert {
-                it[user] = userId
+                it[this.userId] = userId
                 it[this.sku] = sku
             }
         }
@@ -126,16 +126,16 @@ object WatchberriesDatabase {
         return getUser(userId)
     }
 
-    fun deleteSkuFromUser(sku: Int, userId: String): User? {
+    fun deleteSkuFromUser(sku: Int, userId: Int): User? {
         transaction {
-            Skus.deleteWhere { (Skus.user eq userId) and (Skus.sku eq sku) }
+            Skus.deleteWhere { (Skus.userId eq userId) and (Skus.sku eq sku) }
         }
 
         return getUser(userId)
     }
 
-    fun getSkusForUser(id: String) = transaction {
-        Skus.select { Skus.user eq id }.map { it[Skus.sku] }
+    fun getSkusForUser(id: Int) = transaction {
+        Skus.select { Skus.userId eq id }.map { it[Skus.sku] }
     }
 
     fun addPriceToProduct(sku: Int, price: Price) = transaction {

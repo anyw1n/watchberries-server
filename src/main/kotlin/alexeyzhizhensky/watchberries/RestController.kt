@@ -3,7 +3,6 @@ package alexeyzhizhensky.watchberries
 import alexeyzhizhensky.watchberries.data.WatchberriesRepository
 import alexeyzhizhensky.watchberries.data.requests.SkuRequest
 import alexeyzhizhensky.watchberries.data.requests.TokenRequest
-import alexeyzhizhensky.watchberries.data.requests.UserRequest
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.bind.annotation.RestController
 import java.util.*
@@ -20,7 +19,7 @@ class RestController {
     @GetMapping("/api/products")
     fun getProducts(
         @RequestParam(required = false) skus: List<Int>?,
-        @RequestParam(name = "user_id", required = false) userId: String?,
+        @RequestParam(name = "user_id", required = false) userId: Int?,
         @RequestParam(required = false) key: UUID?
     ) = when {
         skus != null -> WatchberriesRepository.getProducts(skus)
@@ -33,28 +32,28 @@ class RestController {
     fun getProduct(@PathVariable sku: Int) = WatchberriesRepository.getProduct(sku)
 
     @PostMapping("/api/users")
-    fun postUser(@RequestBody userRequest: UserRequest) = WatchberriesRepository.createUser(userRequest)
+    fun postUser(@RequestBody tokenRequest: TokenRequest) = WatchberriesRepository.createUser(tokenRequest.token)
 
     @PutMapping("/api/users/{id}")
     fun updateUser(
-        @PathVariable id: String,
+        @PathVariable id: Int,
         @RequestParam key: UUID,
         @RequestBody tokenRequest: TokenRequest
-    ) = if (isAuthCorrect(id, key)) WatchberriesRepository.updateUser(id, tokenRequest) else null
+    ) = if (isAuthCorrect(id, key)) WatchberriesRepository.updateUser(id, tokenRequest.token) else null
 
     @PostMapping("/api/users/{id}/skus")
     fun postSkuToUser(
-        @PathVariable id: String,
+        @PathVariable id: Int,
         @RequestParam key: UUID,
         @RequestBody sku: SkuRequest
     ) = if (isAuthCorrect(id, key)) WatchberriesRepository.addSkuToUser(sku.sku, id) else null
 
     @DeleteMapping("/api/users/{id}/skus")
     fun deleteSkuFromUser(
-        @PathVariable id: String,
+        @PathVariable id: Int,
         @RequestParam key: UUID,
         @RequestBody sku: SkuRequest
     ) = if (isAuthCorrect(id, key)) WatchberriesRepository.removeSkuFromUser(sku.sku, id) else null
 
-    private fun isAuthCorrect(id: String, key: UUID) = WatchberriesRepository.getUser(id)?.key == key
+    private fun isAuthCorrect(id: Int, key: UUID) = WatchberriesRepository.getUser(id)?.key == key
 }
