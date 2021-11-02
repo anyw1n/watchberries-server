@@ -12,7 +12,7 @@ import java.net.URI
 import java.time.LocalDateTime
 import java.util.*
 
-object WatchberriesDatabase {
+class WatchberriesDatabase private constructor() {
 
     fun connect() {
         val dataSource = HikariDataSource().apply {
@@ -150,7 +150,19 @@ object WatchberriesDatabase {
         Prices.deleteWhere { Prices.timestamp less lastDateTime }
     }
 
-    private const val DATABASE_URL_KEY = "DATABASE_URL"
-    private const val JDBC_URL_START = "jdbc:postgresql://"
-    private const val DRIVER_CLASS_NAME = "org.postgresql.Driver"
+    companion object {
+
+        @Volatile
+        private var instance: WatchberriesDatabase? = null
+
+        fun getInstance(): WatchberriesDatabase {
+            return instance ?: synchronized(this) {
+                instance ?: WatchberriesDatabase().also { instance = it }
+            }
+        }
+
+        private const val DATABASE_URL_KEY = "DATABASE_URL"
+        private const val JDBC_URL_START = "jdbc:postgresql://"
+        private const val DRIVER_CLASS_NAME = "org.postgresql.Driver"
+    }
 }

@@ -10,6 +10,8 @@ object WatchberriesRepository {
 
     private val log = LoggerFactory.getLogger(WatchberriesRepository::class.java)
 
+    private val db = WatchberriesDatabase.getInstance()
+
     private fun addProduct(sku: Int): Product? {
         val wbPage = parseWbPage(sku)
 
@@ -30,45 +32,45 @@ object WatchberriesRepository {
             )
         )
 
-        WatchberriesDatabase.insertProduct(product)
+        db.insertProduct(product)
 
         log.info("Product $sku added.")
 
         return product
     }
 
-    fun getProduct(sku: Int) = WatchberriesDatabase.getProduct(sku) ?: addProduct(sku)
+    fun getProduct(sku: Int) = db.getProduct(sku) ?: addProduct(sku)
 
     fun getProducts(skus: List<Int>) = skus.map { getProduct(it) }
 
-    fun getProductsForUser(userId: Int) = getProducts(WatchberriesDatabase.getSkusForUser(userId))
+    fun getProductsForUser(userId: Int) = getProducts(db.getSkusForUser(userId))
 
-    fun getAllProducts() = getProducts(WatchberriesDatabase.getAllSkus())
+    fun getAllProducts() = getProducts(db.getAllSkus())
 
-    fun createUser(token: String) = WatchberriesDatabase.insertUser(token).also {
+    fun createUser(token: String) = db.insertUser(token).also {
         val message = if (it != null) "User ${it.id} created." else "Error creating user."
         log.info(message)
     }
 
-    fun updateUser(id: Int, token: String) = WatchberriesDatabase.updateUser(id, token).also {
+    fun updateUser(id: Int, token: String) = db.updateUser(id, token).also {
         val message = if (it != null) "User ${it.id} updated." else "Error updating user $id."
         log.info(message)
     }
 
-    fun getUser(id: Int) = WatchberriesDatabase.getUser(id)
+    fun getUser(id: Int) = db.getUser(id)
 
-    fun addSkuToUser(sku: Int, userId: Int) = WatchberriesDatabase.addSkuToUser(sku, userId).also {
+    fun addSkuToUser(sku: Int, userId: Int) = db.addSkuToUser(sku, userId).also {
         val message = if (it != null) "Sku $sku added to user ${it.id}." else "Error adding sku $sku to user $userId."
         log.info(message)
     }
 
-    fun removeSkuFromUser(sku: Int, userId: Int) = WatchberriesDatabase.deleteSkuFromUser(sku, userId).also {
+    fun removeSkuFromUser(sku: Int, userId: Int) = db.deleteSkuFromUser(sku, userId).also {
         val message =
             if (it != null) "Sku $sku removed from user ${it.id}." else "Error removing sku $sku from user $userId."
         log.info(message)
     }
 
-    fun updatePrices() = WatchberriesDatabase.getAllSkus().forEach(WatchberriesRepository::updatePrice)
+    fun updatePrices() = db.getAllSkus().forEach(WatchberriesRepository::updatePrice)
 
     private fun updatePrice(sku: Int) {
         val lastPrice = getProduct(sku)?.prices?.lastOrNull()?.price
@@ -84,25 +86,25 @@ object WatchberriesRepository {
             return
         }
 
-        WatchberriesDatabase.addPriceToProduct(sku, Price(LocalDateTime.now(), currentPrice))
+        db.addPriceToProduct(sku, Price(LocalDateTime.now(), currentPrice))
     }
 
     fun deleteOldPrices(lastDateTime: LocalDateTime) {
-        WatchberriesDatabase.getAllSkus().forEach { sku ->
+        db.getAllSkus().forEach { sku ->
             val lastPrice = getProduct(sku)?.prices?.findLast { it.dateTime < lastDateTime }?.price ?: return@forEach
 
-            WatchberriesDatabase.addPriceToProduct(sku, Price(lastDateTime, lastPrice))
+            db.addPriceToProduct(sku, Price(lastDateTime, lastPrice))
         }
 
-        WatchberriesDatabase.deleteOldPrices(lastDateTime)
+        db.deleteOldPrices(lastDateTime)
     }
 
     fun removeOldUsers(lastDateTime: LocalDateTime) {
-        WatchberriesDatabase.getOldUserIds(lastDateTime).forEach {
+        db.getOldUserIds(lastDateTime).forEach {
             log.info("User $it will be deleted.")
         }
 
-        WatchberriesDatabase.deleteOldUsers(lastDateTime)
+        db.deleteOldUsers(lastDateTime)
     }
 
     private fun parseWbPage(sku: Int) = runCatching {
