@@ -81,7 +81,7 @@ object WatchberriesDatabase {
     }
 
     fun deleteOldUsers(lastDateTime: LocalDateTime) = transaction {
-        Users.deleteWhere { Users.lastSync eq lastDateTime }
+        Users.deleteWhere { Users.lastSync less lastDateTime }
     }
 
     fun updateUser(id: Int, token: String): User? {

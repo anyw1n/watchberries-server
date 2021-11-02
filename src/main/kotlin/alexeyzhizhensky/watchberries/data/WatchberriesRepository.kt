@@ -98,12 +98,8 @@ object WatchberriesRepository {
     }
 
     fun removeOldUsers(lastDateTime: LocalDateTime) {
-        WatchberriesDatabase.getOldUserIds(lastDateTime).forEach { userId ->
-            WatchberriesDatabase.getSkusForUser(userId).forEach {
-                removeSkuFromUser(it, userId)
-            }
-
-            log.info("User $userId will be deleted.")
+        WatchberriesDatabase.getOldUserIds(lastDateTime).forEach {
+            log.info("User $it will be deleted.")
         }
 
         WatchberriesDatabase.deleteOldUsers(lastDateTime)
