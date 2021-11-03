@@ -41,11 +41,18 @@ object WatchberriesRepository {
 
     fun getProduct(sku: Int) = db.getProduct(sku) ?: addProduct(sku)
 
-    fun getProducts(skus: List<Int>) = skus.map { getProduct(it) }
+    fun getProducts(skus: List<Int>, page: Int?, limit: Int?) = if (page != null && limit != null) {
+        val pages = skus.chunked(limit)
 
-    fun getProductsForUser(userId: Int) = getProducts(db.getSkusForUser(userId))
+        pages.count() to pages[page].map { getProduct(it) }
+    } else {
+        1 to skus.map { getProduct(it) }
+    }
 
-    fun getAllProducts() = getProducts(db.getAllSkus())
+    fun getProductsForUser(userId: Int, page: Int?, limit: Int?) =
+        getProducts(db.getSkusForUser(userId), page, limit)
+
+    fun getAllProducts(page: Int?, limit: Int?) = getProducts(db.getAllSkus(), page, limit)
 
     fun createUser(token: String) = db.insertUser(token).also {
         val message = if (it != null) "User ${it.id} created." else "Error creating user."
@@ -60,6 +67,8 @@ object WatchberriesRepository {
     fun getUser(id: Int) = db.getUser(id)
 
     fun addSkuToUser(sku: Int, userId: Int) = db.addSkuToUser(sku, userId).also {
+        getProduct(sku)
+
         val message = if (it != null) {
             "Sku $sku added to user ${it.id}."
         } else {

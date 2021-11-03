@@ -1,8 +1,12 @@
 package alexeyzhizhensky.watchberries
 
+import alexeyzhizhensky.watchberries.data.Product
 import alexeyzhizhensky.watchberries.data.WatchberriesRepository
 import alexeyzhizhensky.watchberries.data.requests.SkuRequest
 import alexeyzhizhensky.watchberries.data.requests.TokenRequest
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -26,13 +30,23 @@ class RestController {
     fun getProducts(
         @RequestParam(required = false) skus: List<Int>?,
         @RequestParam(name = "user_id", required = false) userId: Int?,
-        @RequestParam(required = false) key: UUID?
-    ) = when {
-        skus != null -> WatchberriesRepository.getProducts(skus)
-        userId != null && key != null && isAuthCorrect(userId, key) ->
-            WatchberriesRepository.getProductsForUser(userId)
-        userId == null && key == null -> WatchberriesRepository.getAllProducts() // TEST ONLY
-        else -> emptyList()
+        @RequestParam(required = false) key: UUID?,
+        @RequestParam(required = false) page: Int?,
+        @RequestParam(required = false) limit: Int?
+    ): ResponseEntity<List<Product?>> {
+        val (pages, body) = when {
+            skus != null -> WatchberriesRepository.getProducts(skus, page, limit)
+            userId != null && key != null && isAuthCorrect(userId, key) ->
+                WatchberriesRepository.getProductsForUser(userId, page, limit)
+            userId == null && key == null -> WatchberriesRepository.getAllProducts(page, limit)
+            else -> 0 to emptyList()
+        }
+
+        val headers = HttpHeaders().apply {
+            set("Pagination-Pages", pages.toString())
+        }
+
+        return ResponseEntity(body, headers, HttpStatus.OK)
     }
 
     @GetMapping("/api/products/{sku}")
