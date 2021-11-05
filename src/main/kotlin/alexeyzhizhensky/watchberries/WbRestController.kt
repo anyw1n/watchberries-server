@@ -1,7 +1,7 @@
 package alexeyzhizhensky.watchberries
 
 import alexeyzhizhensky.watchberries.data.Product
-import alexeyzhizhensky.watchberries.data.WatchberriesRepository
+import alexeyzhizhensky.watchberries.data.WbRepository
 import alexeyzhizhensky.watchberries.data.requests.SkuRequest
 import alexeyzhizhensky.watchberries.data.requests.TokenRequest
 import org.springframework.http.HttpHeaders
@@ -33,7 +33,7 @@ class WbRestController {
         @RequestParam(required = false) key: UUID?,
         @RequestParam(required = false) page: Int?,
         @RequestParam(required = false) limit: Int?
-    ): ResponseEntity<List<Product?>> {
+    ): ResponseEntity<List<Product>> {
         val (pages, body) = when {
             skus != null -> WbRepository.getProducts(skus, page, limit)
             userId != null && key != null && isAuthCorrect(userId, key) ->

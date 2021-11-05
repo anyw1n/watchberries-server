@@ -76,6 +76,13 @@ class WbDatabase private constructor() {
         }
     }
 
+    fun updateProduct(product: Product) {
+        Products.update({ Products.sku eq product.sku }) {
+            it[brand] = product.brand
+            it[title] = product.title
+        }
+    }
+
     fun insertUser(token: String): User? {
         val userId = transaction {
             Users.insertAndGetId {

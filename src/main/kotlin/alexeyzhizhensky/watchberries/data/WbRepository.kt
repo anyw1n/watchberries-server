@@ -43,10 +43,11 @@ object WbRepository {
 
     fun getProducts(skus: List<Int>, page: Int?, limit: Int?) = if (page != null && limit != null) {
         val pages = skus.chunked(limit)
+        val pageList = pages.getOrNull(page) ?: emptyList()
 
-        pages.count() to pages[page].map { getProduct(it) }
+        pages.count() to pageList.mapNotNull { getProduct(it) }
     } else {
-        1 to skus.map { getProduct(it) }
+        1 to skus.mapNotNull { getProduct(it) }
     }
 
     fun getProductsForUser(userId: Int, page: Int?, limit: Int?) =
@@ -93,23 +94,32 @@ object WbRepository {
         log.info(message)
     }
 
-    fun updatePrices() = db.getAllSkus().forEach(WatchberriesRepository::updatePrice)
+    fun updateProducts() = db.getAllSkus().forEach(WbRepository::updateProduct)
 
-    private fun updatePrice(sku: Int) {
-        val lastPrice = getProduct(sku)?.prices?.lastOrNull()?.price
+    private fun updateProduct(sku: Int) {
+        val product = getProduct(sku)
 
-        val currentPrice = parseWbPage(sku)?.price
-
-        if (currentPrice == null) {
-            log.error("SKU: $sku - Error price updating.")
+        if (product == null) {
+            log.error("Can't get product with sku $sku.")
             return
         }
 
-        if (lastPrice == currentPrice) {
+        val wbPage = parseWbPage(sku)
+
+        if (wbPage == null) {
+            log.error("Can't parse page for sku $sku.")
             return
         }
 
-        db.addPriceToProduct(sku, Price(LocalDateTime.now(), currentPrice))
+        if (product.prices.lastOrNull()?.price != wbPage.price) {
+            db.addPriceToProduct(sku, Price(LocalDateTime.now(), wbPage.price))
+            log.info("Product $sku price updated.")
+        }
+
+        if (product.brand != wbPage.brand || product.title != wbPage.title) {
+            db.updateProduct(Product(sku, wbPage.brand, wbPage.title, emptyList()))
+            log.info("Product $sku info updated.")
+        }
     }
 
     fun deleteOldPrices(lastDateTime: LocalDateTime) {

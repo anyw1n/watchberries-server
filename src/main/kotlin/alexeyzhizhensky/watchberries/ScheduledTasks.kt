@@ -1,6 +1,6 @@
 package alexeyzhizhensky.watchberries
 
-import alexeyzhizhensky.watchberries.data.WatchberriesRepository
+import alexeyzhizhensky.watchberries.data.WbRepository
 import alexeyzhizhensky.watchberries.utils.Constants.OLD_PERIOD_MONTHS
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
@@ -13,12 +13,12 @@ class ScheduledTasks {
     private val log = LoggerFactory.getLogger(ScheduledTasks::class.java)
 
     @Scheduled(cron = "0 0 * * * *")
-    fun updateProductsPrices() {
-        log.info("Start prices update...")
+    fun updateProducts() {
+        log.info("Start products update...")
 
-        WatchberriesRepository.updatePrices()
+        WbRepository.updateProducts()
 
-        log.info("Prices updated.")
+        log.info("Products updated.")
     }
 
     @Scheduled(cron = "0 0 0 * * *")
