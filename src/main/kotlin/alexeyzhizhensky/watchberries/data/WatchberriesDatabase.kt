@@ -109,18 +109,13 @@ class WatchberriesDatabase private constructor() {
         }
     }
 
-    fun getUser(id: Int): User? {
-        val skus = getSkusForUser(id)
-
-        return transaction {
-            Users.select { Users.id eq id }.singleOrNull()?.let {
-                User(
-                    id = it[Users.id].value,
-                    token = it[Users.token],
-                    key = it[Users.key],
-                    skus = skus
-                )
-            }
+    fun getUser(id: Int) = transaction {
+        Users.select { Users.id eq id }.singleOrNull()?.let {
+            User(
+                id = it[Users.id].value,
+                token = it[Users.token],
+                key = it[Users.key]
+            )
         }
     }
 

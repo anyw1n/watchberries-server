@@ -5,6 +5,5 @@ import java.util.UUID
 data class User(
     val id: Int,
     val token: String,
-    val key: UUID,
-    val skus: List<Int>
+    val key: UUID
 )
