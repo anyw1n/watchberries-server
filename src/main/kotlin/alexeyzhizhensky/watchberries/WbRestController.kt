@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
 @RestController
-class RestController {
+class WbRestController {
 
     @GetMapping("/")
     fun index() = "Watchberries server is alive!"
@@ -35,10 +35,10 @@ class RestController {
         @RequestParam(required = false) limit: Int?
     ): ResponseEntity<List<Product?>> {
         val (pages, body) = when {
-            skus != null -> WatchberriesRepository.getProducts(skus, page, limit)
+            skus != null -> WbRepository.getProducts(skus, page, limit)
             userId != null && key != null && isAuthCorrect(userId, key) ->
-                WatchberriesRepository.getProductsForUser(userId, page, limit)
-            userId == null && key == null -> WatchberriesRepository.getAllProducts(page, limit)
+                WbRepository.getProductsForUser(userId, page, limit)
+            userId == null && key == null -> WbRepository.getAllProducts(page, limit)
             else -> 0 to emptyList()
         }
 
@@ -50,37 +50,33 @@ class RestController {
     }
 
     @GetMapping("/api/products/{sku}")
-    fun getProduct(@PathVariable sku: Int) = WatchberriesRepository.getProduct(sku)
+    fun getProduct(@PathVariable sku: Int) = WbRepository.getProduct(sku)
 
     @PostMapping("/api/users")
     fun postUser(
         @RequestBody tokenRequest: TokenRequest
-    ) = WatchberriesRepository.createUser(tokenRequest.token)
+    ) = WbRepository.createUser(tokenRequest.token)
 
     @PutMapping("/api/users/{id}")
     fun updateUser(
         @PathVariable id: Int,
         @RequestParam key: UUID,
         @RequestBody tokenRequest: TokenRequest
-    ) = if (isAuthCorrect(id, key)) {
-        WatchberriesRepository.updateUser(id, tokenRequest.token)
-    } else {
-        null
-    }
+    ) = if (isAuthCorrect(id, key)) WbRepository.updateUser(id, tokenRequest.token) else null
 
     @PostMapping("/api/users/{id}/skus")
     fun postSkuToUser(
         @PathVariable id: Int,
         @RequestParam key: UUID,
         @RequestBody sku: SkuRequest
-    ) = if (isAuthCorrect(id, key)) WatchberriesRepository.addSkuToUser(sku.sku, id) else null
+    ) = if (isAuthCorrect(id, key)) WbRepository.addSkuToUser(sku.sku, id) else null
 
     @DeleteMapping("/api/users/{id}/skus")
     fun deleteSkuFromUser(
         @PathVariable id: Int,
         @RequestParam key: UUID,
         @RequestBody sku: SkuRequest
-    ) = if (isAuthCorrect(id, key)) WatchberriesRepository.removeSkuFromUser(sku.sku, id) else null
+    ) = if (isAuthCorrect(id, key)) WbRepository.removeSkuFromUser(sku.sku, id) else null
 
-    private fun isAuthCorrect(id: Int, key: UUID) = WatchberriesRepository.getUser(id)?.key == key
+    private fun isAuthCorrect(id: Int, key: UUID) = WbRepository.getUser(id)?.key == key
 }

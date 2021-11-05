@@ -27,7 +27,7 @@ class ScheduledTasks {
 
         val lastDateTime = LocalDateTime.now().minusMonths(OLD_PERIOD_MONTHS)
 
-        WatchberriesRepository.deleteOldPrices(lastDateTime)
+        WbRepository.deleteOldPrices(lastDateTime)
 
         log.info("Old prices deleted.")
     }
@@ -36,6 +36,6 @@ class ScheduledTasks {
     fun deleteOldUsers() {
         val lastDateTime = LocalDateTime.now().minusMonths(OLD_PERIOD_MONTHS)
 
-        WatchberriesRepository.removeOldUsers(lastDateTime)
+        WbRepository.removeOldUsers(lastDateTime)
     }
 }

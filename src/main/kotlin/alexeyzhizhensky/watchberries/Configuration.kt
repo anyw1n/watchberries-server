@@ -1,6 +1,6 @@
 package alexeyzhizhensky.watchberries
 
-import alexeyzhizhensky.watchberries.data.WatchberriesDatabase
+import alexeyzhizhensky.watchberries.data.WbDatabase
 import org.springframework.boot.CommandLineRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -10,8 +10,8 @@ class Configuration {
 
     @Bean
     fun init() = CommandLineRunner {
-        WatchberriesDatabase.getInstance().connect()
+        WbDatabase.getInstance().connect()
 
-        FirebaseMessaging.init()
+        WbFirebaseMessaging.init()
     }
 }

@@ -6,11 +6,11 @@ import org.jsoup.Jsoup
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 
-object WatchberriesRepository {
+object WbRepository {
 
-    private val log = LoggerFactory.getLogger(WatchberriesRepository::class.java)
+    private val log = LoggerFactory.getLogger(WbRepository::class.java)
 
-    private val db = WatchberriesDatabase.getInstance()
+    private val db = WbDatabase.getInstance()
 
     private fun addProduct(sku: Int): Product? {
         val wbPage = parseWbPage(sku)

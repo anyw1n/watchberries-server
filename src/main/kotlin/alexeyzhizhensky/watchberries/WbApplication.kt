@@ -6,8 +6,8 @@ import org.springframework.scheduling.annotation.EnableScheduling
 
 @EnableScheduling
 @SpringBootApplication
-class WatchberriesApplication
+class WbApplication
 
 fun main(args: Array<String>) {
-    runApplication<WatchberriesApplication>(*args)
+    runApplication<WbApplication>(*args)
 }

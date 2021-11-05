@@ -20,7 +20,7 @@ import java.net.URI
 import java.time.LocalDateTime
 import java.util.UUID
 
-class WatchberriesDatabase private constructor() {
+class WbDatabase private constructor() {
 
     fun connect() {
         val dataSource = HikariDataSource().apply {
@@ -161,11 +161,11 @@ class WatchberriesDatabase private constructor() {
     companion object {
 
         @Volatile
-        private var instance: WatchberriesDatabase? = null
+        private var instance: WbDatabase? = null
 
-        fun getInstance(): WatchberriesDatabase {
+        fun getInstance(): WbDatabase {
             return instance ?: synchronized(this) {
-                instance ?: WatchberriesDatabase().also { instance = it }
+                instance ?: WbDatabase().also { instance = it }
             }
         }
 
