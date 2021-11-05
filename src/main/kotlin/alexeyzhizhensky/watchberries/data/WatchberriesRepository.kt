@@ -50,7 +50,7 @@ object WatchberriesRepository {
     }
 
     fun getProductsForUser(userId: Int, page: Int?, limit: Int?) =
-        getProducts(db.getSkusForUser(userId), page, limit)
+        getProducts(db.getSkusForUser(userId), page, limit).also { updateUser(userId) }
 
     fun getAllProducts(page: Int?, limit: Int?) = getProducts(db.getAllSkus(), page, limit)
 
@@ -64,9 +64,13 @@ object WatchberriesRepository {
         log.info(message)
     }
 
-    fun getUser(id: Int) = db.getUser(id)
+    private fun updateUser(id: Int) = db.updateUser(id)
+
+    fun getUser(id: Int) = db.getUser(id).also { updateUser(id) }
 
     fun addSkuToUser(sku: Int, userId: Int) = db.addSkuToUser(sku, userId).also {
+        updateUser(userId)
+
         getProduct(sku)
 
         val message = if (it != null) {
@@ -79,6 +83,8 @@ object WatchberriesRepository {
     }
 
     fun removeSkuFromUser(sku: Int, userId: Int) = db.deleteSkuFromUser(sku, userId).also {
+        updateUser(userId)
+
         val message = if (it != null) {
             "Sku $sku removed from user ${it.id}."
         } else {

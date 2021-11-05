@@ -103,6 +103,12 @@ class WatchberriesDatabase private constructor() {
         return getUser(id)
     }
 
+    fun updateUser(id: Int) = transaction {
+        Users.update({ Users.id eq id }) {
+            it[lastSync] = LocalDateTime.now()
+        }
+    }
+
     fun getUser(id: Int): User? {
         val skus = getSkusForUser(id)
 
@@ -112,7 +118,6 @@ class WatchberriesDatabase private constructor() {
                     id = it[Users.id].value,
                     token = it[Users.token],
                     key = it[Users.key],
-                    lastSync = it[Users.lastSync],
                     skus = skus
                 )
             }
